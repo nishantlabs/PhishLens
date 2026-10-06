@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { ThreatAssessment } from "@/types/threat";
+import { getAIConfig } from "@/lib/ai/config";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,14 +11,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required query or assessment context." }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    const { geminiApiKey, gemmaModel } = getAIConfig();
 
-    if (apiKey) {
+    if (geminiApiKey) {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        const systemPrompt = `You are PhishLens Assistant, an elite cybersecurity analyst.
+        const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+        const systemPrompt = `You are PhishLens Assistant, an elite cybersecurity analyst powered by Google Gemma 4.
 The user is asking a question about a digital artifact that PhishLens just analyzed.
 Ground your response ONLY in this threat assessment report:
 - Verdict: ${assessment.verdict}
@@ -32,10 +31,18 @@ Ground your response ONLY in this threat assessment report:
 
 Keep your answer concise (2-4 sentences max), defensive, authoritative, and direct. Do not give generic advice that contradicts the assessment report.`;
 
-        const result = await model.generateContent([systemPrompt, question]);
-        return NextResponse.json({ reply: result.response.text() });
+        const res = await ai.models.generateContent({
+          model: gemmaModel,
+          contents: [
+            { text: `${systemPrompt}\n\nUser Question: ${question}` }
+          ],
+        });
+
+        if (res.text && res.text.trim()) {
+          return NextResponse.json({ reply: res.text.trim() });
+        }
       } catch (e) {
-        console.warn("Live chat API bridge error, using grounded local expert:", e);
+        console.warn("Google AI chat error, using grounded local expert:", e);
       }
     }
 

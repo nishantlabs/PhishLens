@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeMultimodal } from "@/lib/ai/gemma-adapter";
 import { parseQrData } from "@/lib/security/qr-scanner";
+import { AIProviderError } from "@/lib/ai/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +54,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(assessment);
 
   } catch (err: any) {
-    console.error("Scan processing error:", err);
+    if (err instanceof AIProviderError) {
+      return NextResponse.json(
+        { 
+          error: err.userMessage,
+          code: err.code
+        },
+        { status: err.statusCode }
+      );
+    }
+
+    console.error("Scan processing error:", err?.message || err);
     return NextResponse.json(
       { 
-        error: "Security analysis pipeline encountered an error. Please verify the image file and retry.",
-        details: process.env.NODE_ENV === "development" ? err.message : undefined 
+        error: "Security analysis pipeline encountered an error. Please verify the image file and retry."
       },
       { status: 500 }
     );

@@ -149,24 +149,72 @@ Empirical validation framework measuring **Accuracy, Precision, Recall, F1-Score
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript 5.6
 - **Styling:** Tailwind CSS with SOC Dark Cybersecurity theme
-- **AI / Multimodal:** Google Gemma 4 via Google Generative AI SDK (`@google/generative-ai`) with hybrid local inference fallback
+- **Primary AI Runtime:** Google AI Studio (Official `@google/genai` SDK)
+- **Primary AI Reasoning Model:** Google Gemma 4 (`gemma-4-26b-a4b-it`)
+- **AI Abstraction Layer:** Replaceable `AIProvider` (Google AI Cloud and local Ollama providers)
 - **Computer Vision & QR:** `jsQR` (passive QR decoding)
 - **Data Visualization:** `Recharts`
 - **Icons:** `Lucide React`
 
 ---
 
-## 7. Setup & Running Locally
+## 7. Google AI Studio & Gemma 4 Setup
 
-### Prerequisites
-- Node.js v18.20+ or v20+
-- npm or yarn
+PhishLens connects directly to **Google AI Studio** using the official `@google/genai` SDK, running Google's **Gemma 4** (`gemma-4-26b-a4b-it`) as its primary multimodal reasoning engine.
 
-### Installation
+### Architecture Overview:
+```text
+Browser (Frontend UI)
+       │
+       ▼
+PhishLens Next.js API (/api/scan, /api/health/ai, /api/chat)
+       │
+       ▼
+    AIProvider (Abstraction Layer)
+       │
+       ▼
+ GoogleAIProvider (Dedicated Service using @google/genai)
+       │
+       ▼
+ Google AI Studio API (https://generativelanguage.googleapis.com)
+       │
+       ▼
+ Google Gemma 4 (gemma-4-26b-a4b-it - Multimodal Vision & Reasoning)
+```
+
+> **Security Note:** The Google AI API key is kept strictly server-side in `.env.local`. The frontend never calls Google AI directly and never exposes the API key to client browsers or network logs.
+
+---
+
+### Step 1: Obtain a Google AI Studio API Key
+1. Visit [Google AI Studio](https://aistudio.google.com/).
+2. Create or copy your Gemini / Google AI API key.
+
+---
+
+### Step 2: Configure Environment Variables
+PhishLens supports zero-code configuration via `.env.local`.
+
+Create or edit `.env.local` in the project root:
+```env
+# Google AI Studio API Key (Server-Side Only)
+GEMINI_API_KEY=your_google_ai_studio_api_key_here
+
+# Selected Gemma 4 Multimodal Model
+GEMMA_MODEL=gemma-4-26b-a4b-it
+
+# Optional Request Timeout (ms)
+GEMINI_TIMEOUT_MS=60000
+```
+
+> **Runtime Configuration:** You can also configure or update your `GEMINI_API_KEY` and `GEMMA_MODEL` at runtime without restarting the server via the in-app **Settings** modal (Gear icon in top navigation) or via the `/api/config` development endpoint.
+
+---
+
+### Step 3: Start PhishLens
+Install Node dependencies and start the development server:
+
 ```bash
-# Clone or navigate to the repository
-cd phishlens
-
 # Install dependencies
 npm install
 
@@ -178,22 +226,83 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 8. Environment Variables (Optional)
-PhishLens works immediately out of the box using its built-in Gemma 4 multi-layer reasoning adapter. To connect your live Google Gemini / Gemma API key:
+### Step 4: Test the AI Connection
 
-Create a `.env.local` file in the project root:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
+PhishLens provides multiple methods to test and verify the AI runtime connection:
+
+1. **AI Health Endpoint:**
+   Query the real backend health check:
+   ```bash
+   curl http://localhost:3000/api/health/ai
+   ```
+   Example healthy response:
+   ```json
+   {
+     "status": "ok",
+     "reachable": true,
+     "modelExists": true,
+     "multimodalSupported": true,
+     "modelName": "gemma-4-26b-a4b-it",
+     "baseUrl": "https://generativelanguage.googleapis.com",
+     "latencyMs": 350
+   }
+   ```
+
+2. **In-App "AI Connection" Indicator:**
+   In the PhishLens scanner header, the indicator displays real-time connectivity:
+   - `● Connected | Gemma: gemma-4-26b-a4b-it [VISION]`
+   - Or `✕ Unavailable | <reason>` if the API key is missing or invalid.
+
+3. **In-App Settings Connection Test:**
+   Click the **Settings** icon in the navbar, enter or change your Google AI key or Model name, and click **"Test Connection"** to verify round-trip health.
+
+*(Note: PhishLens also includes an `OllamaProvider` implementation if local offline inference is ever desired).*
+
+---
+
+## 8. Complete Analysis Pipeline
+
+PhishLens preserves strict pipeline ordering and fuses deterministic security controls with Gemma 4's multimodal reasoning:
+
+```text
+Screenshot Upload
+       │
+       ▼
+Image Validation (MIME type, 10MB limit)
+       │
+       ▼
+OCR & Script Detection (English, Hindi, Marathi, Hinglish)
+       │
+       ▼
+URL & Digital Extraction (Domain hierarchy, Punycode, TLDs)
+       │
+       ▼
+Passive QR Code Inspection (jsQR, UPI scheme detection)
+       │
+       ▼
+Gemma 4 Multimodal Reasoning through Ollama
+       │
+       ▼
+Structured Threat Assessment & Schema Validation
+       │
+       ▼
+Deterministic Security Checks (IP, Homograph, Brand Spoofing)
+       │
+       ▼
+Risk Engine (0-100 Weighted Blended Score)
+       │
+       ▼
+Explainable Result UI (Spatial Threat Map, Evidence, DO/DO NOT)
 ```
-Or configure it at runtime using the **Settings** modal inside the UI!
 
 ---
 
 ## 9. Security & Privacy Guarantees
-- **Ephemeral Processing:** Uploaded images are processed in-memory and never stored permanently.
+- **Local-Only AI Inference:** All multimodal reasoning is executed on your local Ollama server. No images, screenshots, or credentials leave your machine.
+- **Ephemeral Processing:** Uploaded images are processed in-memory and never stored permanently on disk.
 - **Passive Inspection:** Links and URLs are analyzed textually. They are never opened automatically in user browsers.
 - **Zero-Execution Sandbox:** Uploaded files and APKs are never executed.
-- **No Client Credential Exposure:** Secrets and keys remain safely on the server.
+- **No Hallucinated Fallbacks:** If Ollama is unreachable, PhishLens reports an honest error rather than returning fake scan results.
 
 ---
 

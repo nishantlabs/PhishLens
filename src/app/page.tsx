@@ -27,7 +27,8 @@ import { SettingsModal } from "@/components/dashboard/settings-modal";
 
 import { ThreatAssessment, ScanHistoryItem, DemoScenario } from "@/types/threat";
 import { DEMO_SCENARIOS } from "@/lib/data/demo-scenarios";
-import { Sparkles, ArrowUpRight, RotateCcw } from "lucide-react";
+import { Sparkles, ArrowUpRight, RotateCcw, AlertTriangle, X } from "lucide-react";
+import { AIConnectionIndicator } from "@/components/scanner/ai-connection-indicator";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"scanner" | "analytics" | "history" | "education" | "evaluation">("scanner");
@@ -36,6 +37,7 @@ export default function Home() {
   const [currentAssessment, setCurrentAssessment] = useState<ThreatAssessment | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [pendingAssessment, setPendingAssessment] = useState<ThreatAssessment | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   // Initial Scan History with initial diverse realistic entries
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([
@@ -115,6 +117,7 @@ export default function Home() {
     }
 
     try {
+      setScanError(null);
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,7 +130,8 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        throw new Error("Scan request failed");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Scan request failed");
       }
 
       const assessment: ThreatAssessment = await res.json();
@@ -148,16 +152,20 @@ export default function Home() {
       };
       setScanHistory((prev) => [historyItem, ...prev]);
 
-    } catch (err) {
-      console.error("Scan error, generating local fallback:", err);
-      // Even if network glitches, never crash: show robust fallback
-      const fallbackAssessment = DEMO_SCENARIOS[0].mockResult;
-      setPendingAssessment(fallbackAssessment);
+    } catch (err: any) {
+      console.error("Scan processing error:", err);
+      setIsScanning(false);
+      setShowLiveScanPipeline(false);
+      setPendingAssessment(null);
+      setScanError(
+        err.message || "AI analysis is currently unavailable. Ollama could not be reached."
+      );
     }
   };
 
   // Select Demo Scenario (1-Click Instant Execution)
   const handleSelectScenario = (scenario: DemoScenario) => {
+    setScanError(null);
     setActiveTab("scanner");
     setCurrentImageUrl(scenario.imageUrl);
     setIsScanning(true);
@@ -221,6 +229,7 @@ export default function Home() {
     setCurrentImageUrl(null);
     setIsScanning(false);
     setShowLiveScanPipeline(false);
+    setScanError(null);
   };
 
   return (
@@ -254,9 +263,13 @@ export default function Home() {
               {/* Header title for scanner */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 text-xs font-semibold mb-2">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Multimodal Analysis Hub</span>
+                  <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 text-xs font-semibold">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Multimodal Analysis Hub</span>
+                    </div>
+                    {/* Requirement 11: AI Connection Indicator */}
+                    <AIConnectionIndicator />
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                     {currentAssessment ? "Security Threat Assessment Report" : "Multimodal Security Scanner"}
@@ -273,6 +286,26 @@ export default function Home() {
                   </button>
                 )}
               </div>
+
+              {/* Requirement 4 & 9: Honest Error Banner */}
+              {scanError && (
+                <div className="mb-6 p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-200 flex items-start justify-between gap-3 shadow-lg animate-in fade-in">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-bold text-rose-100 mb-1">AI Analysis Unavailable</h4>
+                      <p className="text-xs text-rose-200/90 font-mono">{scanError}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setScanError(null)}
+                    className="text-rose-400 hover:text-white p-1 rounded transition-colors"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
               {/* Upload Dropzone (hidden if viewing result) */}
               {!currentAssessment && !showLiveScanPipeline && (

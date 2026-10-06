@@ -1,0 +1,212 @@
+{
+  "id": "scan-1791276011888",
+  "timestamp": "2026-10-06T08:40:11.888Z",
+  "verdict": "CRITICAL",
+  "riskScore": 99,
+  "confidence": 0.99,
+  "primaryCategory": "KYC_SCAM",
+  "threatTypes": [
+    "KYC_SCAM",
+    "PHISHING",
+    "IMPERSONATION",
+    "CREDENTIAL_HARVESTING",
+    "SOCIAL_ENGINEERING"
+  ],
+  "summary": "A highly sophisticated phishing attempt impersonating State Bank of India (SBI) using a fake KYC verification pretext to harvest netbanking credentials and OTPs.",
+  "scoreBreakdown": [
+    {
+      "name": "Credential Harvesting Vectors",
+      "score": 25,
+      "category": "textual",
+      "description": "Direct solicitation of passwords, OTP tokens, NetBanking PINs, or card CVVs."
+    },
+    {
+      "name": "Brand & Authority Impersonation",
+      "score": 20,
+      "category": "visual",
+      "description": "Visual or textual mimicry of reputable institutions (banks, government, logistics)."
+    },
+    {
+      "name": "Urgency Manipulation",
+      "score": 15,
+      "category": "behavioral",
+      "description": "Artificial deadline ('within 24 hours', immediate disconnect) designed to bypass critical thinking."
+    },
+    {
+      "name": "Suspicious Destination / TLD",
+      "score": 17,
+      "category": "digital",
+      "description": "Disposable top-level domain, deceptive subdomains, or unverified routing path."
+    },
+    {
+      "name": "Homograph / Direct-IP Evasion",
+      "score": 15,
+      "category": "deterministic",
+      "description": "Punycode domain mimicry or raw IP server routing."
+    },
+    {
+      "name": "Multimodal Visual Anomalies",
+      "score": 12,
+      "category": "visual",
+      "description": "Disproportionate logos, fake trust badges, or spoofed OS notification shell."
+    }
+  ],
+  "signals": [
+    {
+      "category": "Digital / Infrastructure",
+      "severity": "HIGH",
+      "evidence": "High-risk top-level domain associated with disposable scams: .xyz",
+      "detail": "Deterministic inspection layer"
+    },
+    {
+      "category": "Digital / Infrastructure",
+      "severity": "HIGH",
+      "evidence": "Brand spoofing: mentions 'SBI' in host 'sbi-kyc-verify.netbanking-update.xyz', but official domain is onlinesbi.sbi, sbi.co.in",
+      "detail": "Deterministic inspection layer"
+    },
+    {
+      "category": "Psychological Coercion",
+      "severity": "HIGH",
+      "evidence": "Urgency marker: \"24 hours\"",
+      "detail": "Cognitive vulnerability exploitation"
+    },
+    {
+      "category": "Psychological Coercion",
+      "severity": "HIGH",
+      "evidence": "Urgency marker: \"suspended\"",
+      "detail": "Cognitive vulnerability exploitation"
+    },
+    {
+      "category": "Psychological Coercion",
+      "severity": "HIGH",
+      "evidence": "Urgency marker: \"urgent\"",
+      "detail": "Cognitive vulnerability exploitation"
+    },
+    {
+      "category": "Credential Harvester",
+      "severity": "CRITICAL",
+      "evidence": "Direct request for \"password\"",
+      "detail": "High-risk data exfiltration risk"
+    },
+    {
+      "category": "Credential Harvester",
+      "severity": "CRITICAL",
+      "evidence": "Direct request for \"otp\"",
+      "detail": "High-risk data exfiltration risk"
+    },
+    {
+      "category": "Credential Harvester",
+      "severity": "CRITICAL",
+      "evidence": "Direct request for \"netbanking login\"",
+      "detail": "High-risk data exfiltration risk"
+    }
+  ],
+  "socialEngineering": [
+    "urgency",
+    "fear",
+    "authority"
+  ],
+  "visualIndicators": [
+    {
+      "id": "box-1",
+      "x": 5,
+      "y": 4,
+      "width": 90,
+      "height": 11,
+      "category": "branding",
+      "label": "Fake Brand Header",
+      "severity": "HIGH",
+      "whyItMatters": "Uses official-looking branding to establish immediate, false trust with the victim."
+    },
+    {
+      "id": "box-2",
+      "x": 5,
+      "y": 17,
+      "width": 90,
+      "height": 12,
+      "category": "urgency",
+      "label": "Panic Inducer",
+      "severity": "CRITICAL",
+      "whyItMatters": "The red warning box and 'CRITICAL' language are designed to trigger an emotional response and bypass logical scrutiny."
+    },
+    {
+      "id": "box-3",
+      "x": 8,
+      "y": 34,
+      "width": 70,
+      "height": 3,
+      "category": "url",
+      "label": "Malicious Domain",
+      "severity": "CRITICAL",
+      "whyItMatters": "The URL uses a suspicious '.xyz' TLD and a deceptive subdomain structure to mimic a legitimate banking site."
+    },
+    {
+      "id": "box-4",
+      "x": 8,
+      "y": 42,
+      "width": 84,
+      "height": 30,
+      "category": "credential",
+      "label": "Credential Harvesting Form",
+      "severity": "CRITICAL",
+      "whyItMatters": "Directly requests highly sensitive information including NetBanking passwords and mobile numbers for OTP interception."
+    }
+  ],
+  "digitalIndicators": [
+    {
+      "type": "domain",
+      "value": "sbi-kyc-verify.netbanking-update.xyz",
+      "isSuspicious": true,
+      "notes": "High-risk TLD (.xyz) frequently abused in phishing campaigns."
+    },
+    {
+      "type": "domain",
+      "value": "sbi-kyc-verify.netbanking-update.xyz",
+      "isSuspicious": true,
+      "notes": "Impersonates SBI using an unverified domain."
+    }
+  ],
+  "attackPattern": [
+    "Impersonation of a major financial institution (SBI).",
+    "Deployment of a high-pressure 'Account Suspended' narrative.",
+    "Redirection to a fraudulent domain (netbanking-update.xyz) via a deceptive URL.",
+    "Collection of CIF numbers, passwords, and mobile numbers to facilitate unauthorized account access and OTP theft."
+  ],
+  "explanations": [
+    {
+      "title": "Deceptive URL Structure",
+      "description": "The domain is not an official SBI domain. It uses a non-standard TLD (.xyz) and attempts to hide the true domain behind multiple subdomains.",
+      "extractedQuote": "http://sbi-kyc-verify.netbanking-update.xyz/login"
+    },
+    {
+      "title": "Artificial Urgency",
+      "description": "The attacker uses a strict time limit to force the user into making a mistake without verifying the source.",
+      "extractedQuote": "Complete online e-KYC within 24 hours to prevent permanent deactivation."
+    },
+    {
+      "title": "Credential Theft",
+      "description": "The form is designed to capture the exact combination of data needed to hijack a bank account.",
+      "extractedQuote": "NetBanking Password: ••••••••••••"
+    }
+  ],
+  "recommendations": {
+    "do": [
+      "Navigate to the official SBI website by manually typing 'onlinesbi.sbi' into your browser.",
+      "Use the official SBI YONO mobile application for all banking tasks.",
+      "Report this phishing attempt to the official SBI cybersecurity department and your local cybercrime cell."
+    ],
+    "doNot": [
+      "Do not click on any links provided in suspicious emails, SMS, or websites.",
+      "Do not enter your NetBanking password, CIF, or OTP on any website that does not have a verified, official domain.",
+      "Do not trust 'SSL Secured' claims on suspicious websites; attackers can easily use SSL certificates on fraudulent sites."
+    ]
+  },
+  "metadata": {
+    "modelUsed": "Gemma 4 (gemma-4-26b-a4b-it) via Google AI Studio",
+    "processingTimeMs": 50581,
+    "ocrExtractedLength": 476,
+    "detectedLanguage": "English",
+    "deterministicFlagCount": 2,
+    "qrDecoded": false
+  }
+}

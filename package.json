@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/genai": "^2.27.0",
     "@google/generative-ai": "^0.21.0",
     "clsx": "^2.1.1",
     "jsqr": "^1.4.0",

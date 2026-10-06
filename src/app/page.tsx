@@ -37,6 +37,7 @@ export default function Home() {
   const [currentAssessment, setCurrentAssessment] = useState<ThreatAssessment | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [pendingAssessment, setPendingAssessment] = useState<ThreatAssessment | null>(null);
+  const pendingAssessmentRef = useRef<ThreatAssessment | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
 
   // Initial Scan History with initial diverse realistic entries
@@ -135,6 +136,7 @@ export default function Home() {
       }
 
       const assessment: ThreatAssessment = await res.json();
+      pendingAssessmentRef.current = assessment;
       setPendingAssessment(assessment);
 
       // Add to local history
@@ -152,13 +154,21 @@ export default function Home() {
       };
       setScanHistory((prev) => [historyItem, ...prev]);
 
+      // Ensure result is displayed once animation completes or as a safety fallback
+      setTimeout(() => {
+        setCurrentAssessment(assessment);
+        setIsScanning(false);
+        setShowLiveScanPipeline(false);
+      }, 1500);
+
     } catch (err: any) {
       console.error("Scan processing error:", err);
       setIsScanning(false);
       setShowLiveScanPipeline(false);
       setPendingAssessment(null);
+      pendingAssessmentRef.current = null;
       setScanError(
-        err.message || "AI analysis is currently unavailable. Ollama could not be reached."
+        err.message || "AI analysis is currently unavailable. Please verify the AI connection and retry."
       );
     }
   };
@@ -171,6 +181,7 @@ export default function Home() {
     setIsScanning(true);
     setShowLiveScanPipeline(true);
     setCurrentAssessment(null);
+    pendingAssessmentRef.current = scenario.mockResult;
     setPendingAssessment(scenario.mockResult);
 
     // Record into scan history
@@ -197,8 +208,9 @@ export default function Home() {
   const handleLiveScanComplete = () => {
     setIsScanning(false);
     setShowLiveScanPipeline(false);
-    if (pendingAssessment) {
-      setCurrentAssessment(pendingAssessment);
+    const result = pendingAssessmentRef.current || pendingAssessment;
+    if (result) {
+      setCurrentAssessment(result);
     }
   };
 
@@ -226,6 +238,8 @@ export default function Home() {
 
   const resetScanner = () => {
     setCurrentAssessment(null);
+    setPendingAssessment(null);
+    pendingAssessmentRef.current = null;
     setCurrentImageUrl(null);
     setIsScanning(false);
     setShowLiveScanPipeline(false);
@@ -322,6 +336,7 @@ export default function Home() {
                 <LiveScanPipeline
                   active={showLiveScanPipeline}
                   onComplete={handleLiveScanComplete}
+                  isReady={Boolean(pendingAssessment)}
                 />
               )}
 

@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2, Sparkles, Shield, Cpu, Binary, Search, AlertCirc
 interface LiveScanPipelineProps {
   onComplete: () => void;
   active: boolean;
+  isReady?: boolean;
 }
 
 const STAGES = [
@@ -18,7 +19,7 @@ const STAGES = [
   { id: 7, label: "FINAL VERDICT", desc: "Generating Threat Map bounding boxes & defensive directives", icon: CheckCircle2 }
 ];
 
-export const LiveScanPipeline: React.FC<LiveScanPipelineProps> = ({ onComplete, active }) => {
+export const LiveScanPipeline: React.FC<LiveScanPipelineProps> = ({ onComplete, active, isReady = true }) => {
   const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
@@ -29,6 +30,10 @@ export const LiveScanPipeline: React.FC<LiveScanPipelineProps> = ({ onComplete, 
 
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
+        // If we are at stage 4 (Gemma reasoning) and the backend is still processing, hold at stage 4
+        if (prev === 4 && !isReady) {
+          return 4;
+        }
         if (prev < STAGES.length) {
           return prev + 1;
         } else {
@@ -42,7 +47,7 @@ export const LiveScanPipeline: React.FC<LiveScanPipelineProps> = ({ onComplete, 
     }, 450);
 
     return () => clearInterval(interval);
-  }, [active, onComplete]);
+  }, [active, onComplete, isReady]);
 
   if (!active) return null;
 

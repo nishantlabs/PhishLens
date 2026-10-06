@@ -233,38 +233,53 @@ Return STRICT JSON only matching this schema:
       }
     }
 
-    let responseText = "";
-    try {
-      const res = await ai.models.generateContent({
-        model: gemmaModel,
-        contents,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.1,
-        },
-      });
-
-      if (res.text && res.text.trim()) {
-        responseText = res.text.trim();
-      } else {
-        // Fallback: extract text parts that are not thought
-        const candidate = res.candidates?.[0];
-        const parts = candidate?.content?.parts || [];
-        for (const p of parts) {
-          if ((p as any).text && !(p as any).thought) {
-            responseText += (p as any).text;
-          }
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const isTransientError = (err: any): boolean => {
+      const status = err?.status || err?.statusCode || err?.response?.status;
+      if (status === 500 || status === 503) return true;
+      const msg = (err?.message || String(err)).toLowerCase();
+      if (
+        msg.includes("500") ||
+        msg.includes("503") ||
+        msg.includes("internal error") ||
+        msg.includes("unavailable") ||
+        msg.includes("high demand") ||
+        msg.includes("overloaded")
+      ) {
+        // Exclude non-transient / client errors
+        if (
+          msg.includes("400") ||
+          msg.includes("bad request") ||
+          msg.includes("invalid argument") ||
+          msg.includes("api_key_invalid") ||
+          msg.includes("unregistered") ||
+          msg.includes("401") ||
+          msg.includes("403")
+        ) {
+          return false;
         }
+        return true;
       }
-    } catch (err: any) {
-      const msg = err.message || String(err);
-      if (msg.includes("503") || msg.toLowerCase().includes("high demand") || msg.toLowerCase().includes("unavailable")) {
+      return false;
+    };
+
+    const mapAndThrowError = (err: any): never => {
+      const msg = err?.message || String(err);
+      if (
+        msg.includes("503") ||
+        msg.toLowerCase().includes("high demand") ||
+        msg.toLowerCase().includes("unavailable")
+      ) {
         throw AIProviderError.googleApiError(
           `Gemma 4 model "${gemmaModel}" is currently experiencing temporary high demand on Google AI Studio. Please retry in a moment.`,
           503
         );
       }
-      if (msg.includes("API_KEY_INVALID") || msg.includes("403") || msg.includes("unregistered")) {
+      if (
+        msg.includes("API_KEY_INVALID") ||
+        msg.includes("403") ||
+        msg.includes("unregistered")
+      ) {
         throw AIProviderError.googleApiError(
           "Invalid or unauthorized Google AI Studio API key. Please check GEMINI_API_KEY.",
           401
@@ -272,8 +287,56 @@ Return STRICT JSON only matching this schema:
       }
       throw AIProviderError.googleApiError(
         `Google AI Gemma reasoning failed: ${msg}`,
-        502
+        msg.includes("500") ? 500 : 502
       );
+    };
+
+    let responseText = "";
+    let res: any = null;
+
+    try {
+      res = await ai.models.generateContent({
+        model: gemmaModel,
+        contents,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      });
+    } catch (firstErr: any) {
+      if (isTransientError(firstErr)) {
+        console.warn(
+          `[GoogleAIProvider] Transient error from Gemma 4 (${firstErr?.message || firstErr}). Retrying once after 1500ms...`
+        );
+        await sleep(1500);
+        try {
+          res = await ai.models.generateContent({
+            model: gemmaModel,
+            contents,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.1,
+            },
+          });
+        } catch (retryErr: any) {
+          mapAndThrowError(retryErr);
+        }
+      } else {
+        mapAndThrowError(firstErr);
+      }
+    }
+
+    if (res?.text && res.text.trim()) {
+      responseText = res.text.trim();
+    } else {
+      // Fallback: extract text parts that are not thought
+      const candidate = res?.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+      for (const p of parts) {
+        if ((p as any).text && !(p as any).thought) {
+          responseText += (p as any).text;
+        }
+      }
     }
 
     if (!responseText || !responseText.trim()) {
